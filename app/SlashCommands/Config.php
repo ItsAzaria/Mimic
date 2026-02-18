@@ -2,12 +2,13 @@
 
 namespace App\SlashCommands;
 
+use App\Traits\SlashCommandHelpers;
 use Discord\Parts\Interactions\Command\Option;
-use Discord\Parts\Interactions\Interaction;
 use Laracord\Commands\SlashCommand;
 
 class Config extends SlashCommand
 {
+    use SlashCommandHelpers;
     /**
      * The command name.
      *
@@ -86,26 +87,10 @@ class Config extends SlashCommand
         $key = $this->value('key');
         $value = $this->value('value');
 
-        if ($value) {
-            \App\Models\Config::set($key, $value);
-
-            $interaction->sendFollowUpMessage(
-                $this
-                    ->message()
-                    ->title('Config Updated')
-                    ->content("The config key `$key` has been set to `$value`.")
-                    ->build()
-            );
-        } else {
-            $currentValue = \App\Models\Config::get($key, 'Not set');
-
-            $interaction->sendFollowUpMessage(
-                $this
-                    ->message()
-                    ->title('Config Value')
-                    ->content("The current value of the config key `$key` is `$currentValue`.")
-                    ->build()
-            );
+        if ($value !== null) {
+            return $this->setConfig($interaction, $key, $value);
         }
+
+        return $this->viewConfig($interaction, $key);
     }
 }

@@ -2,11 +2,13 @@
 
 namespace App\SlashCommands;
 
+use App\Traits\SlashCommandHelpers;
 use Discord\Parts\Interactions\Command\Option;
 use Laracord\Commands\SlashCommand;
 
 class Mime extends SlashCommand
 {
+    use SlashCommandHelpers;
     /**
      * The command name.
      *
@@ -117,78 +119,69 @@ class Mime extends SlashCommand
     {
         $interaction->acknowledge();
 
-        $actions = ['add', 'remove', 'view'];
+        $operation = collect(['add', 'remove', 'view'])
+            ->first(fn($action) => $this->value("manage.$action.mime") !== null);
 
-        $operation = null;
-
-        foreach ($actions as $action) {
-            if ($this->value("manage.$action.mime") !== null) {
-                $operation = $action;
-                break;
-            }
+        if (!$operation) {
+            return $this->replyWithError($interaction, 'Invalid Operation', 'No valid operation provided.');
         }
 
-        switch ($operation) {
-            case 'add':
-                $mime = $this->value("manage.add.mime");
-                $handling = $this->value("manage.add.handling");
+        $method = 'handle' . ucfirst($operation);
 
-                $this->console()->log("the handling is $handling for mime $mime");
-
-                \App\Models\Mime::updateOrCreate(
-                    ['mime' => $mime],
-                    ['handling' => $handling]
-                );
-
-                $interaction->sendFollowUpMessage(
-                    $this
-                        ->message()
-                        ->title('Mime Rule')
-                        ->content("The handling rule for mime type `$mime` is set to `$handling`.")
-                        ->build()
-                );
-
-                break;
-            case 'remove':
-                $mime = $this->value("manage.remove.mime");
-
-                \App\Models\Mime::where('mime', $mime)->delete();
-
-                $interaction->sendFollowUpMessage(
-                    $this
-                        ->message()
-                        ->title('Mime Rule Removed')
-                        ->content("The handling rule for mime type `$mime` has been removed.")
-                        ->build()
-                );
-
-                break;
-            case 'view':
-                $mime = $this->value("manage.view.mime");
-
-                $rule = \App\Models\Mime::where('mime', $mime)->first();
-
-                if (!$rule) {
-                    $interaction->sendFollowUpMessage(
-                        $this
-                            ->message()
-                            ->title('No Rule Found')
-                            ->content("No rule found for mime type `$mime`.")
-                            ->build()
-                    );
-
-                } else {
-
-                    $interaction->sendFollowUpMessage(
-                        $this
-                            ->message()
-                            ->title('Mime Rule')
-                            ->content("The handling rule for mime type `$mime` is `$rule->handling`.")
-                            ->build()
-                    );
-                }
-
-                break;
+        if (method_exists($this, $method)) {
+            return $this->$method($interaction);
         }
     }
+
+    protected function handleAdd($interaction)
+    {
+        $mime = $this->value("manage.add.mime");
+        $handling = $this->value("manage.add.handling");
+
+        \App\Models\Mime::updateOrCreate(
+            ['mime' => $mime],
+            ['handling' => $handling]
+        );
+
+        return $this->reply(
+            $interaction,
+            'Mime Rule',
+            "The handling rule for mime type `$mime` is set to `$handling`."
+        );
+    }
+
+    protected function handleRemove($interaction)
+    {
+        $mime = $this->value("manage.remove.mime");
+
+        \App\Models\Mime::where('mime', $mime)->delete();
+
+        return $this->reply(
+            $interaction,
+            'Mime Rule Removed',
+            "The handling rule for mime type `$mime` has been removed."
+        );
+    }
+
+    protected function handleView($interaction)
+    {
+        $mime = $this->value("manage.view.mime");
+
+        $rule = \App\Models\Mime::where('mime', $mime)->first();
+
+        if (!$rule) {
+            return $this->replyWithError(
+                $interaction,
+                'No Rule Found',
+                "No rule found for mime type `$mime`."
+            );
+        }
+
+        return $this->reply(
+            $interaction,
+            'Mime Rule',
+            "The handling rule for mime type `$mime` is `$rule->handling`."
+        );
+    }
+
 }
