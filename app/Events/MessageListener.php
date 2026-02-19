@@ -27,60 +27,15 @@ class MessageListener extends Event
             // return;
         }
 
-        $files = [];
-        $codeBlocks = [];
-        $deletedMimeTypes = [];
-        $shouldDeleteOriginal = false;
-
         $content = $message->content ?? '';
+        $codeBlocks = $this->collectCodeBlocks($content);
+        $attachmentResult = $this->processAttachments($message);
 
-        // contains code block
-        if (Str::contains($content, '```')) {
-            $maxCodeBlockSize = \App\Models\Config::get(\App\Models\Config::MAX_CODEBLOCK_SIZE, 1000);
-
-            foreach ($this->extractCodeBlocksWithLanguage($content) as $block) {
-                $isTooLarge = Str::length($block['code']) > $maxCodeBlockSize;
-
-                $codeBlocks[] = [
-                    'content' => $block['code'],
-                    'should_upload' => $isTooLarge,
-                    'language' => $block['language'],
-                    'url' => null,
-                ];
-
-                if ($isTooLarge) {
-                    $shouldDeleteOriginal = true;
-                }
-            }
-        }
-
-
-
-
-        foreach ($message->attachments as $attachment) {
-            $fileContents = file_get_contents($attachment->url);
-            $mimeType = (new finfo(FILEINFO_MIME_TYPE))->buffer($fileContents);
-
-            $mimeRule = \App\Models\Mime::where('mime', $mimeType)->first();
-
-            if (!$mimeRule) {
-                // Disallowed MIME type
-                $shouldDeleteOriginal = true;
-                $deletedMimeTypes[] = $mimeType;
-                continue;
-            }
-
-            // Allowed, check if upload is required
-            if ($mimeRule->handling === 'UPLOAD') {
-                $files[] = [
-                    'name' => $attachment->filename,
-                    'file' => $fileContents,
-                    'mime' => $mimeType,
-                    'url' => null,
-                ];
-                $shouldDeleteOriginal = true;
-            }
-        }
+        $files = $attachmentResult['files'];
+        $deletedMimeTypes = $attachmentResult['deleted_mime_types'];
+        $shouldDeleteOriginal =
+            collect($codeBlocks)->where('should_upload', true)->isNotEmpty() ||
+            $attachmentResult['should_delete'];
 
         if (!$shouldDeleteOriginal) {
             return;
@@ -88,42 +43,120 @@ class MessageListener extends Event
 
         $message->delete();
 
-        $hasUploadableContent = count($files) > 0 || collect($codeBlocks)->where('should_upload', true)->isNotEmpty();
+        $hasUploadableContent = !empty($files) || collect($codeBlocks)->where('should_upload', true)->isNotEmpty();
 
         if (!$hasUploadableContent) {
-            $mimeList = $deletedMimeTypes ? implode(', ', $deletedMimeTypes) : 'unknown/unsupported';
-            $message->channel->sendMessage(
-                "Hey <@{$message->member->id}>, your message contained disallowed content (MIME types: {$mimeList}) and has been deleted."
-            );
+            $this->sendDisallowedContentMessage($message, $deletedMimeTypes);
             return;
         }
 
+        [$codeBlocks, $files] = $this->uploadToPastecord($codeBlocks, $files);
+        $responseLines = $this->buildResponseLines($message, $codeBlocks, $files, $content);
 
+        $message->channel->sendMessage(implode("\n", $responseLines));
 
+        $this->sendLogMessage($message, $responseLines);
+    }
+
+    private function collectCodeBlocks(string $content): array
+    {
+        if (!Str::contains($content, '```')) {
+            return [];
+        }
+
+        $maxCodeBlockSize = \App\Models\Config::get(\App\Models\Config::MAX_CODEBLOCK_SIZE, 1000);
+        $codeBlocks = [];
+
+        foreach ($this->extractCodeBlocksWithLanguage($content) as $block) {
+            $isTooLarge = Str::length($block['code']) > $maxCodeBlockSize;
+
+            $codeBlocks[] = [
+                'content' => $block['code'],
+                'should_upload' => $isTooLarge,
+                'language' => $block['language'],
+                'url' => null,
+            ];
+        }
+
+        return $codeBlocks;
+    }
+
+    private function processAttachments(Message $message): array
+    {
+        $files = [];
+        $deletedMimeTypes = [];
+        $shouldDelete = false;
+        $mimeDetector = new finfo(FILEINFO_MIME_TYPE);
+
+        foreach ($message->attachments as $attachment) {
+            $fileContents = file_get_contents($attachment->url);
+            $mimeType = $mimeDetector->buffer($fileContents);
+            $mimeRule = \App\Models\Mime::where('mime', $mimeType)->first();
+
+            if (!$mimeRule) {
+                $shouldDelete = true;
+                $deletedMimeTypes[] = $mimeType;
+                continue;
+            }
+
+            if ($mimeRule->handling === 'UPLOAD') {
+                $files[] = [
+                    'name' => $attachment->filename,
+                    'file' => $fileContents,
+                    'mime' => $mimeType,
+                    'url' => null,
+                ];
+                $shouldDelete = true;
+            }
+        }
+
+        return [
+            'files' => $files,
+            'deleted_mime_types' => $deletedMimeTypes,
+            'should_delete' => $shouldDelete,
+        ];
+    }
+
+    private function sendDisallowedContentMessage(Message $message, array $deletedMimeTypes): void
+    {
+        $mimeList = $deletedMimeTypes ? implode(', ', $deletedMimeTypes) : 'unknown/unsupported';
+        $message->channel->sendMessage(
+            "Hey {$this->memberMention($message)}, your message contained disallowed content (MIME types: {$mimeList}) and has been deleted."
+        );
+    }
+
+    private function uploadToPastecord(array $codeBlocks, array $files): array
+    {
         $pastecord = new \App\Services\Pastecord();
 
-        foreach ($codeBlocks as &$block) {
+        foreach ($codeBlocks as $index => $block) {
             if ($block['should_upload']) {
-                $block['url'] = $pastecord->upload($block['content']);
+                $codeBlocks[$index]['url'] = $pastecord->upload($block['content']);
             }
         }
 
-        foreach ($files as &$file) {
-            $file['url'] = $pastecord->upload($file['file']);
+        foreach ($files as $index => $file) {
+            $files[$index]['url'] = $pastecord->upload($file['file']);
         }
 
-        $responseLines = ["Hey <@{$message->member->id}>, your file(s) and/or code block(s) have been uploaded to Pastecord:\n"];
+        return [$codeBlocks, $files];
+    }
 
-        $count = 0;
-        foreach ($codeBlocks as &$block) {
-            $lang = $block['language'] ? "{$block['language']}" : '';
+    private function buildResponseLines(Message $message, array $codeBlocks, array $files, string $content): array
+    {
+        $responseLines = [
+            "Hey {$this->memberMention($message)}, your file(s) and/or code block(s) have been uploaded to Pastecord:\n",
+        ];
+
+        foreach ($codeBlocks as $index => $block) {
+            $lang = $block['language'] ?: '';
+
             if ($block['should_upload']) {
-                $responseLines[] = "- **Code Block[{$count}]: **" . ($block['url'] ?? 'Failed to upload');
-            } else {
-                $responseLines[] = "- **Code Block[{$count}]: ** (not uploaded, below is the content)\n```{$lang}\n{$block['content']}\n```";
+                $responseLines[] = "- **Code Block[{$index}]: **" . ($block['url'] ?? 'Failed to upload');
+                continue;
             }
 
-            $count++;
+            $responseLines[] = "- **Code Block[{$index}]: ** (not uploaded, below is the content)\n```{$lang}\n{$block['content']}\n```";
         }
 
         foreach ($files as $file) {
@@ -131,12 +164,15 @@ class MessageListener extends Event
         }
 
         $strippedContent = trim($this->stripCodeBlocks($content));
-        if ($strippedContent) {
-            $responseLines[] = "\n**Message Content:**\n```" . $strippedContent . "```";
+        if ($strippedContent !== '') {
+            $responseLines[] = "\n**Message Content:**\n```{$strippedContent}```";
         }
 
-        $message->channel->sendMessage(implode("\n", $responseLines));
+        return $responseLines;
+    }
 
+    private function sendLogMessage(Message $message, array $responseLines): void
+    {
         $loggingChannelId = \App\Models\Config::get(\App\Models\Config::LOGGING_CHANNEL_ID);
         if (!$loggingChannelId) {
             return;
@@ -148,12 +184,23 @@ class MessageListener extends Event
         }
 
         $loggingChannel->sendMessage(
-            "Message from <@{$message->member->id}> in <#{$message->channel_id}> was deleted due to disallowed content. Uploaded content:\n\n" .
+            "Message from {$this->memberMention($message)} in <#{$message->channel_id}> was deleted due to disallowed content. Uploaded content:\n\n" .
             implode("\n", $responseLines)
         );
     }
 
-    function extractCodeBlocksWithLanguage(string $string): array
+    private function memberMention(Message $message): string
+    {
+        $memberId = $message->member?->id ?? $message->author?->id;
+
+        if (!$memberId) {
+            return 'there';
+        }
+
+        return "<@{$memberId}>";
+    }
+
+    private function extractCodeBlocksWithLanguage(string $string): array
     {
         $codeBlocks = [];
 
