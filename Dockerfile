@@ -1,6 +1,7 @@
 FROM composer:2-php8.4 AS builder
 
 WORKDIR /build
+ENV APP_ENV=development
 
 COPY composer.json composer.lock* ./
 RUN composer install --no-dev --prefer-dist --no-interaction --optimize-autoloader

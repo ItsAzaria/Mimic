@@ -35,6 +35,8 @@ jobs:
 
       - name: Build app
         if: matrix.php == '8.4'
+        env:
+          APP_ENV: development
         run: php laracord app:build
 
       - name: Upload build artifact
