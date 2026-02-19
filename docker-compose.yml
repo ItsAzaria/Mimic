@@ -1,0 +1,9 @@
+services:
+  mimic:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mimic
+    restart: unless-stopped
+    volumes:
+      - ./.env:/app/.env:ro
