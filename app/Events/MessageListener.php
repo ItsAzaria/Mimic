@@ -24,7 +24,7 @@ class MessageListener extends Event
     public function handle(Message $message, Discord $discord)
     {
         if ($message->author?->bot || $message->member?->permissions?->manage_messages) {
-            // return;
+            return;
         }
 
         $content = $message->content ?? '';
