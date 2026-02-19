@@ -20,6 +20,20 @@
     }
   },
   "scripts": {
+    "lint": [
+      "@php scripts/php-lint.php"
+    ],
+    "format:check": [
+      "vendor/bin/pint --test"
+    ],
+    "ci": [
+      "@composer validate --strict",
+      "@composer lint",
+      "@composer format:check"
+    ],
+    "ci:build": [
+      "@php laracord app:build --build-version=ci"
+    ],
     "post-root-package-install": [
       "@php -r \"file_exists('.env') || copy('.env.example', '.env');\""
     ]

@@ -56,6 +56,12 @@ Use `--no-migrate` if you want to skip migrations on boot.
 
 ## Dev
 
+Run CI checks locally:
+
+```bash
+composer ci
+```
+
 Format with Pint:
 
 ```bash

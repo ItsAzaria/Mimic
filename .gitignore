@@ -3,3 +3,4 @@
 /.laracord
 *.sqlite
 .env
+.box_dump
