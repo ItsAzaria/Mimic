@@ -2,7 +2,11 @@
   "name": "laracord/laracord",
   "type": "project",
   "description": "Create Discord bots harnessing the full power of Laravel.",
-  "keywords": ["framework", "laravel", "discord"],
+  "keywords": [
+    "framework",
+    "laravel",
+    "discord"
+  ],
   "license": "MIT",
   "require": {
     "php": "^8.2",
