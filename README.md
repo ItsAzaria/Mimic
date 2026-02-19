@@ -1,44 +1,67 @@
-<p align="center">
-    <img title="Laracord" height="100" src="https://raw.githubusercontent.com/laracord/laracord.com/main/public/images/logo-full-dark.png" alt="Laracord Logo" />
-</p>
+# Mimic
 
-<p align="center">
-  <a href="https://github.com/laracord/framework/actions"><img src="https://img.shields.io/github/actions/workflow/status/laracord/framework/main.yml?branch=main&style=flat-square" alt="Build Status" /></a>
-  <a href="https://packagist.org/packages/laracord/framework"><img src="https://img.shields.io/packagist/dt/laracord/framework.svg?style=flat-square" alt="Total Downloads" /></a>
-  <a href="https://packagist.org/packages/laracord/framework"><img src="https://img.shields.io/packagist/v/laracord/framework.svg?label=framework&style=flat-square" alt="Latest Stable Version" /></a>
-  <a href="https://packagist.org/packages/laracord/framework"><img src="https://img.shields.io/packagist/l/laracord/framework.svg?style=flat-square" alt="License" /></a>
-</p>
+Mimic is a Discord moderation bot built with Laracord.
 
-Laracord is a [micro-framework](https://github.com/laracord/framework) providing a powerful starting point for your next [Discord](https://discord.com/developers/docs/intro) bot.
-
-Quickly build functional, elegant bots using [Laravel](https://laravel.com/) alongside [DiscordPHP](https://github.com/discord-php/DiscordPHP).
-
-![Screenshot](https://raw.githubusercontent.com/laracord/laracord.com/main/public/images/laracord-cli.png)
+It enforces MIME rules on attachments and uploads large code/files to Pastecord.
 
 ## Features
 
-- ⚡️ Out of the box support for databases, caching, and many other Laravel features thanks to [Laravel Zero](https://laravel-zero.com/).
-- 🚀 Instantly generate working bot [commands](https://laracord.com/docs/commands) and [event listeners](https://laracord.com/docs/events) with 0 knowledge.
-- 🧑‍💻 Automatic handling of registering/updating/unregistering application [slash commands](https://laracord.com/docs/slash-commands).
-- 🚚 Easy to use [interaction routing](https://laracord.com/docs/interactions) for persistence on message buttons and actions.
-- 👷 Generate asynchronous [services/tasks](https://laracord.com/docs/services) that run parallel to the bot.
-- 🌎 Optional [HTTP Server](https://laracord.com/docs/http-server) with native Laravel routing and [Livewire support](https://laracord.com/docs/livewire).
-- 🔧 Fully configurable and extendable.
-- 💄 Beautiful console logging with timestamps.
-- 🔍️ Fully [documented](https://laracord.com) and maintained.
+- Blocks disallowed attachment MIME types.
+- Uploads `UPLOAD` MIME attachments to Pastecord and reposts links.
+- Uploads code blocks larger than `MAX_CODEBLOCK_SIZE`.
+- Optional moderation logging via `LOGGING_CHANNEL_ID`.
 
-## Documentation
+## Slash commands
 
-For full documentation, visit [Laracord.com](https://laracord.com).
 
-## Bug Reports
+Both require `manage_messages`.
 
-If you discover a bug in Laracord, please [open an issue](https://github.com/laracord/framework/issues).
+- `/config key:MAX_CODEBLOCK_SIZE value:<number>`
+- `/config key:LOGGING_CHANNEL_ID value:<channel_id>`
+- `/mime manage add mime:<type> handling:ALLOW|UPLOAD`
+- `/mime manage remove mime:<type>`
+- `/mime manage view mime:<type>`
 
-## Contributing
+## Getting started
 
-Contributing whether it be through PRs, reporting an issue, or suggesting an idea is encouraged and appreciated.
+1) Install dependencies
+
+```bash
+composer install
+```
+
+2) Configure environment
+
+Copy and edit `.env`:
+
+```bash
+copy .env.example .env
+```
+
+Set at minimum:
+
+```dotenv
+APP_NAME=Mimic
+APP_ENV=development
+DISCORD_TOKEN=your_bot_token_here
+```
+
+3) Run the bot
+
+```bash
+php laracord bot:boot
+```
+
+Use `--no-migrate` if you want to skip migrations on boot.
+
+## Dev
+
+Format with Pint:
+
+```bash
+vendor/bin/pint
+```
 
 ## License
 
-Laracord is provided under the [MIT License](LICENSE.md).
+This project is licensed under the MIT License. See [LICENSE.md](LICENSE.md).
