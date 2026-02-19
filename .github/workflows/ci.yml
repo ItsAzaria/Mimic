@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php: ["8.2", "8.3"]
+        php: ["8.4"]
 
     steps:
       - name: Checkout
@@ -34,13 +34,13 @@ jobs:
         run: composer ci
 
       - name: Build app
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.4'
         run: composer ci:build
 
       - name: Upload build artifact
-        if: matrix.php == '8.2'
+        if: matrix.php == '8.4'
         uses: actions/upload-artifact@v4
         with:
-          name: laracord-build-php82
+          name: laracord-build-php84
           path: builds/laracord
           if-no-files-found: error
