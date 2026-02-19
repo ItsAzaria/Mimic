@@ -2,8 +2,6 @@
 
 namespace App\Traits;
 
-use Discord\Parts\Interactions\Interaction;
-
 trait SlashCommandHelpers
 {
     protected function reply($interaction, string $title, string $content)
@@ -27,7 +25,6 @@ trait SlashCommandHelpers
         );
     }
 
-
     protected function setConfig($interaction, string $key, $value)
     {
         $oldValue = \App\Models\Config::get($key);
@@ -40,7 +37,6 @@ trait SlashCommandHelpers
 
         return $this->reply($interaction, 'Config Updated', $message);
     }
-
 
     protected function viewConfig($interaction, string $key)
     {

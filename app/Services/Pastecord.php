@@ -15,6 +15,7 @@ class Pastecord
             'timeout' => 5.0,
         ]);
     }
+
     public function upload(string $content): string
     {
         try {
@@ -28,7 +29,7 @@ class Pastecord
 
             $data = json_decode($response->getBody(), true);
 
-            return self::API_BASE_URL . '/' . $data['key'];
+            return self::API_BASE_URL.'/'.$data['key'];
         } catch (\Exception $e) {
             return null;
         }

@@ -9,6 +9,7 @@ use Laracord\Commands\SlashCommand;
 class Config extends SlashCommand
 {
     use SlashCommandHelpers;
+
     /**
      * The command name.
      *
@@ -42,7 +43,7 @@ class Config extends SlashCommand
                 [
                     'name' => 'Logging Channel ID',
                     'value' => 'LOGGING_CHANNEL_ID',
-                ]
+                ],
             ],
         ],
         [

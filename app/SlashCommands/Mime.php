@@ -9,6 +9,7 @@ use Laracord\Commands\SlashCommand;
 class Mime extends SlashCommand
 {
     use SlashCommandHelpers;
+
     /**
      * The command name.
      *
@@ -82,11 +83,10 @@ class Mime extends SlashCommand
                             'required' => true,
                         ],
                     ],
-                ]
+                ],
             ],
         ],
     ];
-
 
     /**
      * The permissions required to use the command.
@@ -120,13 +120,13 @@ class Mime extends SlashCommand
         $interaction->acknowledge();
 
         $operation = collect(['add', 'remove', 'view'])
-            ->first(fn($action) => $this->value("manage.$action.mime") !== null);
+            ->first(fn ($action) => $this->value("manage.$action.mime") !== null);
 
-        if (!$operation) {
+        if (! $operation) {
             return $this->replyWithError($interaction, 'Invalid Operation', 'No valid operation provided.');
         }
 
-        $method = 'handle' . ucfirst($operation);
+        $method = 'handle'.ucfirst($operation);
 
         if (method_exists($this, $method)) {
             return $this->$method($interaction);
@@ -135,8 +135,8 @@ class Mime extends SlashCommand
 
     protected function handleAdd($interaction)
     {
-        $mime = $this->value("manage.add.mime");
-        $handling = $this->value("manage.add.handling");
+        $mime = $this->value('manage.add.mime');
+        $handling = $this->value('manage.add.handling');
 
         \App\Models\Mime::updateOrCreate(
             ['mime' => $mime],
@@ -152,7 +152,7 @@ class Mime extends SlashCommand
 
     protected function handleRemove($interaction)
     {
-        $mime = $this->value("manage.remove.mime");
+        $mime = $this->value('manage.remove.mime');
 
         \App\Models\Mime::where('mime', $mime)->delete();
 
@@ -165,11 +165,11 @@ class Mime extends SlashCommand
 
     protected function handleView($interaction)
     {
-        $mime = $this->value("manage.view.mime");
+        $mime = $this->value('manage.view.mime');
 
         $rule = \App\Models\Mime::where('mime', $mime)->first();
 
-        if (!$rule) {
+        if (! $rule) {
             return $this->replyWithError(
                 $interaction,
                 'No Rule Found',
@@ -183,5 +183,4 @@ class Mime extends SlashCommand
             "The handling rule for mime type `$mime` is `$rule->handling`."
         );
     }
-
 }

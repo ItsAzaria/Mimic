@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 class Config extends Model
 {
     const MAX_CODEBLOCK_SIZE = 'MAX_CODEBLOCK_SIZE';
+
     const LOGGING_CHANNEL_ID = 'LOGGING_CHANNEL_ID';
+
     protected $fillable = ['key', 'value'];
 
     public static function get($key, $default = null)

@@ -5,9 +5,9 @@ namespace App\Events;
 use Discord\Discord;
 use Discord\Parts\Channel\Message;
 use Discord\WebSockets\Event as Events;
+use finfo;
 use Illuminate\Support\Str;
 use Laracord\Events\Event;
-use finfo;
 
 class MessageListener extends Event
 {
@@ -37,16 +37,17 @@ class MessageListener extends Event
             collect($codeBlocks)->where('should_upload', true)->isNotEmpty() ||
             $attachmentResult['should_delete'];
 
-        if (!$shouldDeleteOriginal) {
+        if (! $shouldDeleteOriginal) {
             return;
         }
 
         $message->delete();
 
-        $hasUploadableContent = !empty($files) || collect($codeBlocks)->where('should_upload', true)->isNotEmpty();
+        $hasUploadableContent = ! empty($files) || collect($codeBlocks)->where('should_upload', true)->isNotEmpty();
 
-        if (!$hasUploadableContent) {
+        if (! $hasUploadableContent) {
             $this->sendDisallowedContentMessage($message, $deletedMimeTypes);
+
             return;
         }
 
@@ -60,7 +61,7 @@ class MessageListener extends Event
 
     private function collectCodeBlocks(string $content): array
     {
-        if (!Str::contains($content, '```')) {
+        if (! Str::contains($content, '```')) {
             return [];
         }
 
@@ -93,9 +94,10 @@ class MessageListener extends Event
             $mimeType = $mimeDetector->buffer($fileContents);
             $mimeRule = \App\Models\Mime::where('mime', $mimeType)->first();
 
-            if (!$mimeRule) {
+            if (! $mimeRule) {
                 $shouldDelete = true;
                 $deletedMimeTypes[] = $mimeType;
+
                 continue;
             }
 
@@ -127,7 +129,7 @@ class MessageListener extends Event
 
     private function uploadToPastecord(array $codeBlocks, array $files): array
     {
-        $pastecord = new \App\Services\Pastecord();
+        $pastecord = new \App\Services\Pastecord;
 
         foreach ($codeBlocks as $index => $block) {
             if ($block['should_upload']) {
@@ -152,7 +154,8 @@ class MessageListener extends Event
             $lang = $block['language'] ?: '';
 
             if ($block['should_upload']) {
-                $responseLines[] = "- **Code Block[{$index}]: **" . ($block['url'] ?? 'Failed to upload');
+                $responseLines[] = "- **Code Block[{$index}]: **".($block['url'] ?? 'Failed to upload');
+
                 continue;
             }
 
@@ -160,7 +163,7 @@ class MessageListener extends Event
         }
 
         foreach ($files as $file) {
-            $responseLines[] = "- **File:** {$file['name']}: " . ($file['url'] ?? 'Failed to upload');
+            $responseLines[] = "- **File:** {$file['name']}: ".($file['url'] ?? 'Failed to upload');
         }
 
         $strippedContent = trim($this->stripCodeBlocks($content));
@@ -174,17 +177,17 @@ class MessageListener extends Event
     private function sendLogMessage(Message $message, array $responseLines): void
     {
         $loggingChannelId = \App\Models\Config::get(\App\Models\Config::LOGGING_CHANNEL_ID);
-        if (!$loggingChannelId) {
+        if (! $loggingChannelId) {
             return;
         }
 
         $loggingChannel = $this->discord()->getChannel($loggingChannelId);
-        if (!$loggingChannel) {
+        if (! $loggingChannel) {
             return;
         }
 
         $loggingChannel->sendMessage(
-            "Message from {$this->memberMention($message)} in <#{$message->channel_id}> was deleted due to disallowed content. Uploaded content:\n\n" .
+            "Message from {$this->memberMention($message)} in <#{$message->channel_id}> was deleted due to disallowed content. Uploaded content:\n\n".
             implode("\n", $responseLines)
         );
     }
@@ -193,7 +196,7 @@ class MessageListener extends Event
     {
         $memberId = $message->member?->id ?? $message->author?->id;
 
-        if (!$memberId) {
+        if (! $memberId) {
             return 'there';
         }
 
@@ -208,7 +211,7 @@ class MessageListener extends Event
             foreach ($matches as $match) {
                 $codeBlocks[] = [
                     'language' => $match[1] ?? '',
-                    'code' => trim($match[2])
+                    'code' => trim($match[2]),
                 ];
             }
         }
